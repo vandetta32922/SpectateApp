@@ -1,0 +1,14 @@
+{
+    "user1": {
+        "password": "password1",
+        "verified": false
+    },
+    "user2": {
+        "password": "password2",
+        "verified": true
+    },
+    "vandetta": {
+        "password": "32922",
+        "verified": true
+    }
+}
