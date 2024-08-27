@@ -79,7 +79,7 @@ def main():
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.verified = load_user_data().get(username, {}).get("verified", False)
-                    st.experimental_rerun()
+                    # After setting session state, let Streamlit handle the re-rendering
 
     if st.session_state.logged_in:
         if not st.session_state.verified:
@@ -87,14 +87,7 @@ def main():
             return
 
         st.sidebar.title("Navigation")
-        page = st.sidebar.radio("Select a Page", ["Home", "Documentation", "Logout"])
-
-        if page == "Logout":
-            st.session_state.logged_in = False
-            st.session_state.verified = False
-            st.session_state.username = None
-            st.session_state.names = None
-            st.experimental_rerun()
+        page = st.sidebar.radio("Select a Page", ["Home", "Documentation"])
 
         if page == "Home":
             st.markdown("<h1 style='font-size: 24px;'>Summoner Names by Region and Rank</h1>", unsafe_allow_html=True)
@@ -110,55 +103,51 @@ def main():
             if st.button("Update Table"):
                 st.session_state.page = 0
                 st.session_state.names = fetch_player_names(region.lower(), rank.lower())
-
+            
             if 'names' in st.session_state:
                 names = st.session_state.names
                 names_per_page = 10
                 num_pages = (len(names) + names_per_page - 1) // names_per_page
+                page = st.session_state.get('page', 0)
 
-                start = st.session_state.page * names_per_page
+                start = page * names_per_page
                 end = min(start + names_per_page, len(names))
                 st.write(f"Showing players for {region} and rank {rank}:")
-                table_data = {"Summoner Name": names[start:end], "Rank": [rank.capitalize()] * (end - start)}
-                st.table(table_data)
+                st.table({"Summoner Name": names[start:end], "Rank": [rank.capitalize()] * (end - start)})
 
-                # Pagination controls
-                num_buttons = 10
-                start_page = max(0, st.session_state.page - num_buttons // 2)
-                end_page = min(num_pages, start_page + num_buttons)
-                page_buttons = list(range(start_page, end_page))
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    if page > 0:
+                        if st.button("Previous"):
+                            st.session_state.page -= 1
+                with col2:
+                    if page < num_pages - 1:
+                        if st.button("Next"):
+                            st.session_state.page += 1
 
-                cols = st.columns(len(page_buttons))
-                for i, page_num in enumerate(page_buttons):
-                    with cols[i]:
-                        if st.button(f"{page_num + 1}", key=f"page_{page_num}"):
-                            st.session_state.page = page_num
+            if st.button("Spectate"):
+                selected_name = st.session_state.get("selected_player", None)
+                if selected_name:
+                    with open("player.txt", "w") as file:
+                        file.write(selected_name)
+                    st.success(f"Player {selected_name} saved to player.txt")
 
-                # Handle page navigation beyond 10 pages
-                if start_page > 0:
-                    if st.button("Prev", key="prev"):
-                        st.session_state.page = max(0, start_page - num_buttons)
-                if end_page < num_pages:
-                    if st.button("Next", key="next"):
-                        st.session_state.page = min(num_pages - 1, end_page)
+                    try:
+                        subprocess.Popen(["python", "spectate.py"])
+                    except Exception as e:
+                        st.error(f"Failed to run spectate.py: {str(e)}")
+                else:
+                    st.warning("Please select a summoner from the table.")
 
-                # Copy button functionality using JavaScript
-                for name in names[start:end]:
-                    col1, col2 = st.columns([4, 1])
-                    with col1:
-                        st.write(name)
-                    with col2:
-                        if st.button("Copy", key=f"copy_{name}"):
-                            st.markdown(f"""
-                            <script>
-                            navigator.clipboard.writeText("{name}").then(() => {{
-                                console.log('Text copied to clipboard');
-                            }}, (err) => {{
-                                console.error('Error copying text: ', err);
-                            }});
-                            </script>
-                            """, unsafe_allow_html=True)
-                            st.success(f"Copied {name} to clipboard")
+            if st.session_state.get("selected_player"):
+                selected_player = st.session_state["selected_player"]
+            else:
+                selected_player = None
+
+            if 'names' in st.session_state:
+                names = st.session_state.names
+                selected_name = st.selectbox("Select Summoner:", names, key="select_summoner")
+                st.session_state.selected_player = selected_name
 
         elif page == "Documentation":
             st.markdown("<h1 style='font-size: 24px;'>Documentation</h1>", unsafe_allow_html=True)
