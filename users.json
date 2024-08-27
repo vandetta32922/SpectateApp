@@ -1,7 +1,7 @@
 {
-    "user1": {
-        "password": "password1",
-        "verified": false
+    "AHA": {
+        "password": "AHA123",
+        "verified": true
     },
     "user2": {
         "password": "password2",
